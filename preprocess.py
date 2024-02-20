@@ -74,7 +74,6 @@ def cal_weight_matrix(
         spatial_type="KDTree",
         verbose=False,
 ):
-
     if platform in ["Visium", "ST"]:
         # gene_counts = adata.X.copy()
         if platform == "Visium":
@@ -127,6 +126,9 @@ def cal_weight_matrix(
         adata.obsm["weights_matrix_all"] = (physical_distance
                                             * gene_correlation
                                             * morphological_similarity)
+        # 这里就是个测试！
+        # adata.obsm["weights_matrix_all"] = (physical_distance
+        #                                     * morphological_similarity)
         if no_morphological:
             adata.obsm["weights_matrix_nomd"] = (gene_correlation
                                                  * physical_distance)

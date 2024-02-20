@@ -9,7 +9,7 @@ from typing import Callable, Iterable, Union, Tuple, Optional
 import logging
 
 
-class STGIN(nn.Module):
+class ResST(nn.Module):
     def __init__(self,
                  input_dim,
                  linear_encoder_hidden=[50, 20],
@@ -19,7 +19,7 @@ class STGIN(nn.Module):
                  dec_cluster_n=15,
                  activate="relu",
                  ):
-        super(STGIN, self).__init__()
+        super(ResST, self).__init__()
         self.input_dim = input_dim
         self.alpha = 0.8
         self.conv_hidden = conv_hidden

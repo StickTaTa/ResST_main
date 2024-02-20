@@ -10,7 +10,7 @@ from pathlib import Path
 from torch.autograd import Variable
 from sklearn.metrics import pairwise_distances, calinski_harabasz_score
 from tqdm import tqdm
-from model import STGIN, AdversarialNetwork
+from model import ResST, AdversarialNetwork
 from sklearn.decomposition import PCA
 
 import graph_utils
@@ -114,7 +114,7 @@ def trainer(adata, data_name, save_path, domains=None,
         model = torch.load(os.path.join(save_path_model, f'{data_name}_model.pt'))
     else:
 
-        model = STGIN(
+        model = ResST(
             input_dim=concat_X.shape[1],
             linear_encoder_hidden=linear_encoder_hidden,
             linear_decoder_hidden=linear_decoder_hidden,
@@ -184,7 +184,7 @@ def trainer(adata, data_name, save_path, domains=None,
         model.eval()
         z, mu, logvar, de_feat, out_q, feat_x, gnn_z = model(data, adj)
         deepst_embed = z.cpu().detach().numpy()
-    print('STGIN training has been Done! the embeddings has been stored adata.obsm["embed"].')
+    print('ResST training has been Done! the embeddings has been stored adata.obsm["embed"].')
     adata.obsm["embed"] = deepst_embed
     # cluster_labels, score = Kmeans_cluster(deepst_embed, n_clusters)
     # adata.obs['kmeans'] = cluster_labels

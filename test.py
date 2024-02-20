@@ -73,3 +73,5 @@ adata.write(result_path + '/adata_main.h5')
 #               legend_loc='right margin', legend_fontsize='x-large', size=1.6)
 #
 # adata.write(result_path + '/adata_main.h5')
+ground_truth = pd.read_csv('dataset/V1_Breast_Cancer_Block_A_Section_1/metadata.tsv',sep='\t',index_col=None)
+print(sklearn.metrics.adjusted_rand_score(ground_truth['fine_annot_type'], adata.obs['refine_pred']))
