@@ -15,6 +15,6 @@ The ResST is a graph self-supervised residual learning framework for spatial tra
 ## Tutorial
 ***
 A Jupyter Notebook of the tutorial is accessible from :
-[https://www.example.com/my%20great%20page](https://www.example.com/my%20great%20page)
+[https://github.com/StickTaTa/ResST_main/blob/master/tutorial.ipynb](https://github.com/StickTaTa/ResST_main/blob/master/tutorial.ipynb)
 ## Requirements
 ***
