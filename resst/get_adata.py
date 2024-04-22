@@ -15,7 +15,7 @@ import torchvision.models as models
 from torch.autograd import Variable
 import torchvision.transforms as transforms
 
-from read_adata_utils import *
+from .read_adata_utils import *
 
 
 # def read_stereoSeq(path,

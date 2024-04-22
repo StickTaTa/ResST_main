@@ -5,7 +5,7 @@ from anndata import AnnData
 import numpy as np
 from PIL import Image
 import pandas as pd
-from _compat import Literal
+from ._compat import *
 
 _QUALITY = Literal["fulres", "hires", "lowres"]
 _background = ["black", "white"]

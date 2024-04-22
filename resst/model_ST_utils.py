@@ -8,12 +8,11 @@ import matplotlib.pyplot as plt
 
 from pathlib import Path
 from torch.autograd import Variable
-from sklearn.metrics import pairwise_distances, calinski_harabasz_score
+from sklearn.metrics import calinski_harabasz_score
 from tqdm import tqdm
-from model import ResST, AdversarialNetwork
-from sklearn.decomposition import PCA
 
-import graph_utils
+from .model import ResST, AdversarialNetwork
+import resst.graph_utils as graph_utils
 
 
 def optimize_cluster(adata, resolution: list = list(np.arange(0.1, 2.5, 0.01))):
@@ -184,7 +183,7 @@ def trainer(adata, data_name, save_path, domains=None,
         model.eval()
         z, mu, logvar, de_feat, out_q, feat_x, gnn_z = model(data, adj)
         deepst_embed = z.cpu().detach().numpy()
-    print('ResST training has been Done! the embeddings has been stored adata.obsm["embed"].')
+    print('resst training has been Done! the embeddings has been stored adata.obsm["embed"].')
     adata.obsm["embed"] = deepst_embed
     # cluster_labels, score = Kmeans_cluster(deepst_embed, n_clusters)
     # adata.obs['kmeans'] = cluster_labels

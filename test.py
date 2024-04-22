@@ -1,17 +1,14 @@
 import anndata
-import numpy as np
 import pandas as pd
 import scanpy as sc
 import os
 
-import scipy.spatial.distance
 import sklearn
-import stlearn
 from scipy.spatial import distance
 
-from model_ST_utils import trainer, priori_cluster, plot_map
-from get_adata import get_data, refine
-from preprocess import get_enhance_feature
+from resst.model_ST_utils import trainer, priori_cluster, plot_map
+from resst.get_adata import get_data, refine
+from resst.preprocess import get_enhance_feature
 
 data_name = 'V1_Breast_Cancer_Block_A_Section_1'
 generated_data_path = 'generated_data'
