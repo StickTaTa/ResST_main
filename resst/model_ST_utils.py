@@ -3,12 +3,14 @@ import pandas as pd
 import scanpy as sc
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import os
 import matplotlib.pyplot as plt
 
 from pathlib import Path
 from torch.autograd import Variable
 from sklearn.metrics import calinski_harabasz_score
+from sklearn.cluster import KMeans
 from tqdm import tqdm
 
 from .model import ResST, AdversarialNetwork
@@ -62,7 +64,8 @@ def priori_cluster(adata, n_domains=15, cluster_type='leiden', increment=0.01):
 
 
 def trainer(adata, data_name, save_path, domains=None,
-            pre_epochs=2000,
+            pre_epochs=1000,
+            epochs=500,
             min_cells=3,
             pca_n_comps=50,
             linear_encoder_hidden=[32, 20],
@@ -131,8 +134,9 @@ def trainer(adata, data_name, save_path, domains=None,
         adj = graph_dict['adj_norm'].to(device)
         model.to(device)
 
+        # 预训练
         with tqdm(total=int(pre_epochs),
-                  desc="Model is training...",
+                  desc="Model is pretraining...",
                   bar_format="{l_bar}{bar} [ time left: {remaining} ]") as pbar:
             for epoch in range(pre_epochs):
                 inputs_corr = masking_noise(data)
@@ -176,16 +180,84 @@ def trainer(adata, data_name, save_path, domains=None,
                 torch.nn.utils.clip_grad_norm_(model.parameters(), grad_down)
                 optimizer.step()
                 pbar.update(1)
+        # 聚类初始化
+        with torch.no_grad():
+            model.eval()
+            pre_z, _, _, _, _, _, _ = model(data, adj)
+            pre_z = pre_z.cpu().detach().numpy()
+            cluster_method = KMeans(n_clusters=dec_cluster_n, n_init=dec_cluster_n * 2, random_state=88)
+            y_pred_last = np.copy(cluster_method.fit_predict(pre_z))
+            if domains is None:
+                model.cluster_layer.data = torch.tensor(cluster_method.cluster_centers_).to(device)
+            else:
+                model.model.cluster_layer.data = torch.tensor(cluster_method.cluster_centers_).to(device)
+
+        # 正式训练
+        with tqdm(total=int(pre_epochs),
+                  desc="Model is final training...",
+                  bar_format="{l_bar}{bar} [ time left: {remaining} ]") as pbar:
+            for epoch in range(epochs):
+                if epoch % 20 == 0:
+                    with torch.no_grad():
+                        model.eval()
+                        if domains is None:
+                            z, _, _, _, q, _, _ = model(data, adj)
+                        else:
+                            z, _, _, _, q, _, _, _ = model(data, adj)
+                        z = z.cpu().detach().numpy()
+                        q = q.cpu().detach().numpy()
+                    q = model.target_distribution(torch.Tensor(q).clone().detach())
+                    y_pred = q.cpu().numpy().argmax(1)
+                    delta_label = np.sum(y_pred != y_pred_last).astype(np.float32) / y_pred.shape[0]
+                    y_pred_last = np.copy(y_pred)
+                    if epoch > 0 and delta_label < 0.001:
+                        print('delta_label {:.4}'.format(delta_label), '< tol', 0.001)
+                        print('Reached tolerance threshold. Stopping training.')
+                        break
+                model.train()
+                optimizer.zero_grad()
+                inputs_coor = data.to(device)
+                if domains is None:
+                    z, mu, logvar, de_feat, out_q, feat_x, gnn_z = model(Variable(inputs_coor), adj)
+                    preds = model.dc(z)
+                else:
+                    z, mu, logvar, de_feat, out_q, feat_x, gnn_z, domain_pred = model(Variable(inputs_coor), adj)
+                    preds = model.model.dc(z)
+                    loss_function = nn.CrossEntropyLoss()
+                    domain_loss = loss_function(domain_pred, domains)
+                loss_resst = model.loss(
+                    decoded=de_feat,
+                    x=data,
+                    preds=preds,
+                    labels=graph_dict['adj_label'].to(device),
+                    mu=mu,
+                    logvar=logvar,
+                    n_nodes=data.shape[0],
+                    norm=graph_dict['norm_value'],
+                    mask=graph_dict['adj_label'].to(device),
+                    mse_weight=10,
+                    bce_kld_weight=0.1
+                )
+                loss_kl = F.kl_div(out_q.log(), q.to(device))
+                if domains is None:
+                    loss = 100 * loss_kl + loss_resst
+                else:
+                    loss = 100 * loss_kl + loss_resst + domain_loss
+                loss.backward()
+                torch.nn.utils.clip_grad_norm_(model.parameters(), grad_down)
+                optimizer.step()
+                pbar.update(1)
+
         if store:
             torch.save(model, os.path.join(save_path_model, f'{data_name}_model.pt'))
 
     with torch.no_grad():
         model.eval()
         z, mu, logvar, de_feat, out_q, feat_x, gnn_z = model(data, adj)
-        deepst_embed = z.cpu().detach().numpy()
+        resst_embed = z.cpu().detach().numpy()
     print('resst training has been Done! the embeddings has been stored adata.obsm["embed"].')
-    adata.obsm["embed"] = deepst_embed
-    # cluster_labels, score = Kmeans_cluster(deepst_embed, n_clusters)
+    adata.obsm["embed"] = resst_embed
+    # cluster_labels, score = Kmeans_cluster(resst_embed, n_clusters)
     # adata.obs['kmeans'] = cluster_labels
 
     return adata
