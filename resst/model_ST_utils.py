@@ -46,14 +46,15 @@ def priori_cluster(adata, n_domains=15, cluster_type='leiden', increment=0.01):
     :return: resolution[int]
     """
     if cluster_type == 'leiden':
+        print('Please waiting, calculating best resolution...')
         for res in sorted(list(np.arange(0.1, 2.5, increment)), reverse=True):
             sc.tl.leiden(adata, random_state=0, resolution=res)
             count_unique_leiden = len(pd.DataFrame(adata.obs['leiden']).leiden.unique())
-            print('Current count:', count_unique_leiden)
             if count_unique_leiden == n_domains:
                 break
         print("Best resolution: ", res)
     elif cluster_type == 'louvain':
+        print('Please waiting, calculating best resolution...')
         for res in sorted(list(np.arange(0.2, 2.5, increment)), reverse=True):
             sc.tl.louvain(adata, random_state=0, resolution=res)
             count_unique_louvain = len(pd.DataFrame(adata.obs['louvain']).louvain.unique())
@@ -197,23 +198,23 @@ def trainer(adata, data_name, save_path, domains=None,
                   desc="Model is final training...",
                   bar_format="{l_bar}{bar} [ time left: {remaining} ]") as pbar:
             for epoch in range(epochs):
-                if epoch % 20 == 0:
-                    with torch.no_grad():
-                        model.eval()
-                        if domains is None:
-                            z, _, _, _, q, _, _ = model(data, adj)
-                        else:
-                            z, _, _, _, q, _, _, _ = model(data, adj)
-                        z = z.cpu().detach().numpy()
-                        q = q.cpu().detach().numpy()
-                    q = model.target_distribution(torch.Tensor(q).clone().detach())
-                    y_pred = q.cpu().numpy().argmax(1)
-                    delta_label = np.sum(y_pred != y_pred_last).astype(np.float32) / y_pred.shape[0]
-                    y_pred_last = np.copy(y_pred)
-                    if epoch > 0 and delta_label < 0.001:
-                        print('delta_label {:.4}'.format(delta_label), '< tol', 0.001)
-                        print('Reached tolerance threshold. Stopping training.')
-                        break
+
+                with torch.no_grad():
+                    model.eval()
+                    if domains is None:
+                        z, _, _, _, q, _, _ = model(data, adj)
+                    else:
+                        z, _, _, _, q, _, _, _ = model(data, adj)
+                    z = z.cpu().detach().numpy()
+                    q = q.cpu().detach().numpy()
+                q = model.target_distribution(torch.Tensor(q).clone().detach())
+                y_pred = q.cpu().numpy().argmax(1)
+                delta_label = np.sum(y_pred != y_pred_last).astype(np.float32) / y_pred.shape[0]
+                y_pred_last = np.copy(y_pred)
+                if epoch > 0 and delta_label < 0.001:
+                    print('delta_label {:.4}'.format(delta_label), '< tol', 0.001)
+                    print('Reached tolerance threshold. Stopping training.')
+                    break
                 model.train()
                 optimizer.zero_grad()
                 inputs_coor = data.to(device)
